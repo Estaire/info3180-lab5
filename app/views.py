@@ -10,7 +10,7 @@ from flask import render_template, request, redirect, url_for, flash
 from flask_login import login_user, logout_user, current_user, login_required
 from app.forms import LoginForm
 from app.models import UserProfile
-from werkzeug.security import check_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
 
 ###
 # Routing for your application.
@@ -27,6 +27,10 @@ def about():
     """Render the website's about page."""
     return render_template('about.html')
 
+@app.route('/secure-page')
+@login_required
+def secure_page():
+    return render_template('secure_page.html')
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -43,15 +47,20 @@ def login():
             # You will need to import the appropriate function to do so.
             # Then store the result of that query to a `user` variable so it can be
             # passed to the login_user() method below.
-            user = UserProfile.query.filter_by(username=username, password= check_password_hash(password)).first()
-            # get user id, load into session
-            login_user(user)
-            flash('Logged in successfully.')
-            # remember to flash a message to the user
-            return redirect(url_for("secure-page"))  # they should be redirected to a secure-page route instead
+            user = UserProfile.query.filter_by(username=username).first()
+            if user is not None and check_password_hash(user.password, password):
+                # get user id, load into session
+                login_user(user)
+                flash('Logged in successfully.')
+                # remember to flash a message to the user
+                return redirect(url_for("secure_page"))  # they should be redirected to a secure-page route instead
     return render_template("login.html", form=form)
 
-
+@app.route("/logout") 
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for('home'))
 # user_loader callback. This callback is used to reload the user object from
 # the user ID stored in the session
 @login_manager.user_loader
